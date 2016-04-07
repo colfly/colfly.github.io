@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>在IOS9中使用KeychainTouchID</title>
+  <meta name="description" content="前言在IOS9之前如果我们想做指纹认证的功能，只能完全信任客户端的结果，如果客户端被破解那么指纹验证就可能不绕过。但是这一切在IOS9之后有改观，后台服务器也能参与认证的过程了，接下来我们会详细介绍。">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://iDivines.com/develop/ios/2016/04/05/welcome-to-KeychainTouchID.html">
+  <link rel="alternate" type="application/rss+xml" title="iDivines" href="http://iDivines.com/feed.xml">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">iDivines</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about/">About</a>
+          
+        
+          
+          <a class="page-link" href="/archive/">Archive</a>
+          
+        
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">在IOS9中使用KeychainTouchID</h1>
+    <p class="post-meta"><time datetime="2016-04-05T16:08:08+08:00" itemprop="datePublished">Apr 5, 2016</time></p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <h2 id="section">前言</h2>
+<p>在IOS9之前如果我们想做指纹认证的功能，只能完全信任客户端的结果，如果客户端被破解那么指纹验证就可能不绕过。但是这一切在IOS9之后有改观，后台服务器也能参与认证的过程了，接下来我们会详细介绍。</p>
+
+<h2 id="section-1">关键点</h2>
+<p>1.在IOS9之后苹果对keychain进行了改进，keychain的敏感数据迁移到Secure Enclave中。参考<a href="https://developer.apple.com/videos/play/wwdc2015/706/">wwdc2015 Security and Privacy</a></p>
+
+<ol>
+  <li>
+    <p><code class="highlighter-rouge">SecGenerateKeyPair</code> : 该方法用于生成RSA或者ECC非对称密钥。IOS9之后指定参数<code class="highlighter-rouge">kSecAttrTokenIDSecureEnclave</code> 和 <code class="highlighter-rouge">kSecAttrKeyTypeEC</code>可以产生ECC的非对称密钥对，公钥会返回给程序，私钥直接送到Secure Enclave中，任何用户都无法获取私钥，只能通过<code class="highlighter-rouge">SecKeyRawSign</code>方法来请求签名，同时我们可以设置ACL说明使用Touch ID来保护私钥。</p>
+  </li>
+  <li>
+    <p><code class="highlighter-rouge">SecKeyRawSign</code> : 使用ECDSA算法来签名数据，</p>
+  </li>
+</ol>
+
+<p><a href="https://developer.apple.com/videos/play/wwdc2015/706/">video</a></p>
+
+<p><a href="https://developer.apple.com/library/ios/samplecode/KeychainTouchID/Introduction/Intro.html#//apple_ref/doc/uid/TP40014530-Intro-DontLinkElementID_2">TouchIDKeyChainDemo</a></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	CFErrorRef error = NULL;
+	Sec AccessControlRef sacObject;
+	//访问控制链表
+	sacObject = SecAccessControlCreateWithFlags(kCFAllocatorDefault,
+	                                            kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
+	                                            kSecAccessControlTouchIDAny | kSecAccessControlPrivateKeyUsage, &amp;error);
+	
+	// 密钥参数
+	NSDictionary *parameters = @{
+	    (__bridge id)kSecAttrTokenID: (__bridge id)kSecAttrTokenIDSecureEnclave, //私钥存入SE
+	    (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeEC, //如果要使用SE，这里只能指定kSecAttrKeyTypeEC
+	    (__bridge id)kSecAttrKeySizeInBits: @256,
+	    (__bridge id)kSecPrivateKeyAttrs: @{
+	        (__bridge id)kSecAttrAccessControl: (__bridge_transfer id)sacObject,
+	        (__bridge id)kSecAttrIsPermanent: @YES,
+	        (__bridge id)kSecAttrLabel: @"my-se-key", //密钥名
+	    },
+	};
+	
+	//产生公私钥对
+	SecKeyRef publicKey, privateKey;
+	OSStatus status = SecKeyGeneratePair((__bridge CFDictionaryRef)parameters, &amp;publicKey, &amp;privateKey);
+	//将公钥保存下来
+</code></pre>
+</div>
+
+<p>注意，publicKey是返回的公钥，privateKey是私钥的token，我们只能用privateKey来请求签名数据。</p>
+
+<p>4.上一步得到的publicKey的并不是真正的公钥数据，这里我们需要先把publicKey保存到keychain就能得到真正的公钥数据了，下面是简单的代码片段：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	NSDictionary *pubDict = @{
+	        (__bridge id)kSecClass              : (__bridge id)kSecClassKey,
+	        (__bridge id)kSecAttrKeyType        : (__bridge id)kSecAttrKeyTypeEC,
+	        (__bridge id)kSecAttrLabel          : @"",
+	        (__bridge id)kSecAttrIsPermanent    : @(YES),
+	        (__bridge id)kSecValueRef           : (__bridge id)publicKey,
+	        (__bridge id)kSecAttrKeyClass       : (__bridge id)kSecAttrKeyClassPublic,
+	        (__bridge id)kSecReturnData         : @(YES)
+	    };
+	
+	    CFTypeRef dataRef = NULL;
+	    status = SecItemAdd((__bridge CFDictionaryRef)pubDict, &amp;dataRef);
+</code></pre>
+</div>
+
+<p>5.dataRef就是我们得到的真正的公钥数据，我们把他转成PEM格式</p>
+
+
+  </div>
+
+</article>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">iDivines</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>iDivines</li>
+          <li><a href="mailto:idiviness@gmailc.com">idiviness@gmailc.com</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/iDivines"><span class="icon icon--github"><svg viewBox="0 0 16 16"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">iDivines</span></a>
+
+          </li>
+          
+
+          
+          <li>
+            <a href="https://twitter.com/iDivines"><span class="icon icon--twitter"><svg viewBox="0 0 16 16"><path fill="#828282" d="M15.969,3.058c-0.586,0.26-1.217,0.436-1.878,0.515c0.675-0.405,1.194-1.045,1.438-1.809c-0.632,0.375-1.332,0.647-2.076,0.793c-0.596-0.636-1.446-1.033-2.387-1.033c-1.806,0-3.27,1.464-3.27,3.27 c0,0.256,0.029,0.506,0.085,0.745C5.163,5.404,2.753,4.102,1.14,2.124C0.859,2.607,0.698,3.168,0.698,3.767 c0,1.134,0.577,2.135,1.455,2.722C1.616,6.472,1.112,6.325,0.671,6.08c0,0.014,0,0.027,0,0.041c0,1.584,1.127,2.906,2.623,3.206 C3.02,9.402,2.731,9.442,2.433,9.442c-0.211,0-0.416-0.021-0.615-0.059c0.416,1.299,1.624,2.245,3.055,2.271 c-1.119,0.877-2.529,1.4-4.061,1.4c-0.264,0-0.524-0.015-0.78-0.046c1.447,0.928,3.166,1.469,5.013,1.469 c6.015,0,9.304-4.983,9.304-9.304c0-0.142-0.003-0.283-0.009-0.423C14.976,4.29,15.531,3.714,15.969,3.058z"/></svg>
+</span><span class="username">iDivines</span></a>
+
+          </li>
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>Standing on the shoulders of giants.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>

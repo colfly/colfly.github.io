@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>iDivines</title>
+    <description>Standing on the shoulders of giants.</description>
+    <link>http://iDivines.com/</link>
+    <atom:link href="http://iDivines.com/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Thu, 07 Apr 2016 17:56:39 +0800</pubDate>
+    <lastBuildDate>Thu, 07 Apr 2016 17:56:39 +0800</lastBuildDate>
+    <generator>Jekyll v3.1.1</generator>
+    
+      <item>
+        <title>在IOS9中使用KeychainTouchID</title>
+        <description>&lt;h2 id=&quot;section&quot;&gt;前言&lt;/h2&gt;
+&lt;p&gt;在IOS9之前如果我们想做指纹认证的功能，只能完全信任客户端的结果，如果客户端被破解那么指纹验证就可能不绕过。但是这一切在IOS9之后有改观，后台服务器也能参与认证的过程了，接下来我们会详细介绍。&lt;/p&gt;
+
+&lt;h2 id=&quot;section-1&quot;&gt;关键点&lt;/h2&gt;
+&lt;p&gt;1.在IOS9之后苹果对keychain进行了改进，keychain的敏感数据迁移到Secure Enclave中。参考&lt;a href=&quot;https://developer.apple.com/videos/play/wwdc2015/706/&quot;&gt;wwdc2015 Security and Privacy&lt;/a&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;SecGenerateKeyPair&lt;/code&gt; : 该方法用于生成RSA或者ECC非对称密钥。IOS9之后指定参数&lt;code class=&quot;highlighter-rouge&quot;&gt;kSecAttrTokenIDSecureEnclave&lt;/code&gt; 和 &lt;code class=&quot;highlighter-rouge&quot;&gt;kSecAttrKeyTypeEC&lt;/code&gt;可以产生ECC的非对称密钥对，公钥会返回给程序，私钥直接送到Secure Enclave中，任何用户都无法获取私钥，只能通过&lt;code class=&quot;highlighter-rouge&quot;&gt;SecKeyRawSign&lt;/code&gt;方法来请求签名，同时我们可以设置ACL说明使用Touch ID来保护私钥。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;SecKeyRawSign&lt;/code&gt; : 使用ECDSA算法来签名数据，&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://developer.apple.com/videos/play/wwdc2015/706/&quot;&gt;video&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://developer.apple.com/library/ios/samplecode/KeychainTouchID/Introduction/Intro.html#//apple_ref/doc/uid/TP40014530-Intro-DontLinkElementID_2&quot;&gt;TouchIDKeyChainDemo&lt;/a&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;	CFErrorRef error = NULL;
+	Sec AccessControlRef sacObject;
+	//访问控制链表
+	sacObject = SecAccessControlCreateWithFlags(kCFAllocatorDefault,
+	                                            kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
+	                                            kSecAccessControlTouchIDAny | kSecAccessControlPrivateKeyUsage, &amp;amp;error);
+	
+	// 密钥参数
+	NSDictionary *parameters = @{
+	    (__bridge id)kSecAttrTokenID: (__bridge id)kSecAttrTokenIDSecureEnclave, //私钥存入SE
+	    (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeEC, //如果要使用SE，这里只能指定kSecAttrKeyTypeEC
+	    (__bridge id)kSecAttrKeySizeInBits: @256,
+	    (__bridge id)kSecPrivateKeyAttrs: @{
+	        (__bridge id)kSecAttrAccessControl: (__bridge_transfer id)sacObject,
+	        (__bridge id)kSecAttrIsPermanent: @YES,
+	        (__bridge id)kSecAttrLabel: @&quot;my-se-key&quot;, //密钥名
+	    },
+	};
+	
+	//产生公私钥对
+	SecKeyRef publicKey, privateKey;
+	OSStatus status = SecKeyGeneratePair((__bridge CFDictionaryRef)parameters, &amp;amp;publicKey, &amp;amp;privateKey);
+	//将公钥保存下来
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;注意，publicKey是返回的公钥，privateKey是私钥的token，我们只能用privateKey来请求签名数据。&lt;/p&gt;
+
+&lt;p&gt;4.上一步得到的publicKey的并不是真正的公钥数据，这里我们需要先把publicKey保存到keychain就能得到真正的公钥数据了，下面是简单的代码片段：&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;	NSDictionary *pubDict = @{
+	        (__bridge id)kSecClass              : (__bridge id)kSecClassKey,
+	        (__bridge id)kSecAttrKeyType        : (__bridge id)kSecAttrKeyTypeEC,
+	        (__bridge id)kSecAttrLabel          : @&quot;&quot;,
+	        (__bridge id)kSecAttrIsPermanent    : @(YES),
+	        (__bridge id)kSecValueRef           : (__bridge id)publicKey,
+	        (__bridge id)kSecAttrKeyClass       : (__bridge id)kSecAttrKeyClassPublic,
+	        (__bridge id)kSecReturnData         : @(YES)
+	    };
+	
+	    CFTypeRef dataRef = NULL;
+	    status = SecItemAdd((__bridge CFDictionaryRef)pubDict, &amp;amp;dataRef);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;5.dataRef就是我们得到的真正的公钥数据，我们把他转成PEM格式&lt;/p&gt;
+
+</description>
+        <pubDate>Tue, 05 Apr 2016 16:08:08 +0800</pubDate>
+        <link>http://iDivines.com/develop/ios/2016/04/05/welcome-to-KeychainTouchID.html</link>
+        <guid isPermaLink="true">http://iDivines.com/develop/ios/2016/04/05/welcome-to-KeychainTouchID.html</guid>
+        
+        
+        <category>develop</category>
+        
+        <category>ios</category>
+        
+      </item>
+    
+  </channel>
+</rss>
