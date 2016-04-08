@@ -11,7 +11,7 @@ categories: develop ios
 
 ## 关键点
 
-1. 在IOS9之后苹果对keychain进行了改进，支持秘钥的产生和使用在Secure Enclave中进行。具体可以参考[wwdc2015 Security and Privacy](https://developer.apple.com/videos/play/wwdc2015/706/)
+1. 在IOS9之后苹果对keychain进行了改进，支持密钥的产生和使用在Secure Enclave中进行。具体可以参考[wwdc2015 Security and Privacy](https://developer.apple.com/videos/play/wwdc2015/706/)
 
 2. `SecGenerateKeyPair` : 可以产生ECC P256的非对称密钥对，如果公钥会返回给程序私钥直接送到Secure Enclave中，任何用户都无法获取私钥，只能通过 SecKeyRawSign 方法来请求签名，同时我们可以使用 SecAccessControlCreateWithFlags 来设置如果要使用私钥必须验证Touch ID。
 
@@ -19,7 +19,8 @@ categories: develop ios
 
 4. 如何使用 SecGenerateKeyPair 和 SecKeyRawSign 请参考[TouchIDKeyChainDemo](https://developer.apple.com/library/ios/samplecode/KeychainTouchID/Introduction/Intro.html#//apple_ref/doc/uid/TP40014530-Intro-DontLinkElementID_2)
 
-#服务器如何参与验证指纹认证
+## 服务器如何参与验证指纹认证
+
 1. 客户端调用SecGenerateKeyPair产生密钥对。
 
 2. 将公钥上送到服务器进行存储。
@@ -50,20 +51,20 @@ categories: develop ios
 	#define PublicKeyFinalTag         @"\n-----END PUBLIC KEY-----"
 
     
-    //产生秘钥
+    //产生密钥
 	- (void)generateKeyAsync {
     
 	    CFErrorRef error = NULL;
 	    SecAccessControlRef sacObject;
 	    
-	    //设置ACL，使用kSecAccessControlTouchIDAny表示使用Touch ID来保护秘钥。
+	    //设置ACL，使用kSecAccessControlTouchIDAny表示使用Touch ID来保护密钥。
 	    sacObject = SecAccessControlCreateWithFlags(kCFAllocatorDefault,
 	                                                kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
 	                                                kSecAccessControlTouchIDAny | kSecAccessControlPrivateKeyUsage, &error);
 	    
 	    NSDictionary *parameters = @{
-	                                 (__bridge id)kSecAttrTokenID: (__bridge id)kSecAttrTokenIDSecureEnclave,//表示使用SecureEnclave来保存秘钥
-	                                 (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeEC,//表示产生ECC秘钥对，注意目前只支持256位的ECC算法
+	                                 (__bridge id)kSecAttrTokenID: (__bridge id)kSecAttrTokenIDSecureEnclave,//表示使用SecureEnclave来保存密钥
+	                                 (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeEC,//表示产生ECC密钥对，注意目前只支持256位的ECC算法
 	                                 (__bridge id)kSecAttrKeySizeInBits: @256,
 	                                 (__bridge id)kSecPrivateKeyAttrs: @{
 	                                         (__bridge id)kSecAttrAccessControl: (__bridge_transfer id)sacObject,
@@ -122,7 +123,7 @@ categories: develop ios
 	}
 
 
-    //使用秘钥
+    //使用密钥
 	- (void)useKeyAsync {
 
 	    NSDictionary *query = @{
@@ -171,7 +172,7 @@ categories: develop ios
 	    });
 	}
 
-	//删除秘钥
+	//删除密钥
 	- (void)deleteKeyAsync {
 
 	    NSDictionary *query = @{
@@ -193,7 +194,6 @@ categories: develop ios
 
 ## 备注
 
-1. 我测试发现如果多次调用generateKeyAsync但是kSecAttrLabel又不变，使用SecKeyRawSign是可以签名成功的，但是使用openssl验签就会失败，所以在调用生成秘钥前之前要先删除旧的秘钥。
+1. 我测试发现如果多次调用generateKeyAsync但是kSecAttrLabel又不变，使用SecKeyRawSign是可以签名成功的，但是使用openssl验签就会失败，所以在调用生成钥前之前要先删除旧的密钥。
 
-2. openssl的ios库可以使用[OpenSSL-for-iPhone](https://github.com/x2on/OpenSSL-for-iPhone/)，一个命令就可以完成自动下载编译打包，非常方便。
-
+2. openssl的ios库可以使用[OpenSSL-for-iPhone](https://github.com/x2on/OpenSSL-for-iPhone/)，一个命令就可以自动打包，非常方便。
