@@ -5,11 +5,11 @@ date:   2016-04-05 16:08:08 +0800
 categories: develop ios
 ---
 
-#前言
+## 前言
 
 在IOS9之前如果我们想做指纹认证的功能，只能完全信任客户端的结果，如果客户端被破解那么指纹验证就可能被绕过。但是这一切在IOS9之后有了改观，后台服务器也能参与认证的过程了，接下来我们会详细介绍。
 
-#关键点
+## 关键点
 
 1. 在IOS9之后苹果对keychain进行了改进，支持秘钥的产生和使用在Secure Enclave中进行。具体可以参考[wwdc2015 Security and Privacy](https://developer.apple.com/videos/play/wwdc2015/706/)
 
@@ -32,7 +32,7 @@ categories: develop ios
 
 6. 服务器使用公钥来验证签名。
 
-#使用openssl验签demo
+## 使用openssl验签demo
 
 	#define Secp256r1CurveLen     256
 
@@ -189,7 +189,7 @@ categories: develop ios
 	    });
 	}
 
-##备注
+## 备注
 
 1. 我测试发现如果多次调用generateKeyAsync但是kSecAttrLabel又不变，使用SecKeyRawSign是可以签名成功的，但是使用openssl验签就会失败，所以在调用生成秘钥前之前要先删除旧的秘钥。
 
