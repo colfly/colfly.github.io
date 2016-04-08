@@ -194,6 +194,6 @@ categories: develop ios
 
 ## 备注
 
-1. 我测试发现如果多次调用generateKeyAsync但是kSecAttrLabel又不变，使用SecKeyRawSign是可以签名成功的，但是使用openssl验签就会失败，所以在调用生成钥前之前要先删除旧的密钥。
+1. 我测试发现如果多次调用generateKeyAsync且kSecAttrLabel不变，使用SecKeyRawSign可以签名成功，但是使用openssl验签就会失败，所以在调用generateKeyAsync之前先调用deleteKeyAsync。
 
 2. openssl的ios库可以使用[OpenSSL-for-iPhone](https://github.com/x2on/OpenSSL-for-iPhone/)，一个命令就可以自动打包，非常方便。
