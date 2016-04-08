@@ -144,6 +144,8 @@ categories: develop ios
 	            uint8_t hash[CC_SHA1_DIGEST_LENGTH];
 	            CC_SHA256(dataToSign, CC_SHA1_DIGEST_LENGTH, hash);
 	            
+	            //调用SecKeyRawSign的时候系统会自动调起Touch ID验证用户指纹
+	            //指纹的验证和数据的签名都在Secure Enclave中进行保证了安全
 	            status = SecKeyRawSign(privateKey, kSecPaddingPKCS1, dataToSign, sizeof(dataToSign), sign, &signatureLength);
 	            if (status == errSecSuccess) {
 	                NSLog(@"SecKeyRawSign签名数据成功");
