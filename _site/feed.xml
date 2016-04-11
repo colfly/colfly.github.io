@@ -5,22 +5,24 @@
     <description>Standing on the shoulders of giants.</description>
     <link>http://iDivines.com/</link>
     <atom:link href="http://iDivines.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Fri, 08 Apr 2016 11:40:24 +0800</pubDate>
-    <lastBuildDate>Fri, 08 Apr 2016 11:40:24 +0800</lastBuildDate>
+    <pubDate>Mon, 11 Apr 2016 11:21:47 +0800</pubDate>
+    <lastBuildDate>Mon, 11 Apr 2016 11:21:47 +0800</lastBuildDate>
     <generator>Jekyll v3.1.1</generator>
     
       <item>
         <title>在IOS9中使用KeychainTouchID</title>
-        <description>&lt;h1 id=&quot;section&quot;&gt;前言&lt;/h1&gt;
+        <description>&lt;h3 id=&quot;section&quot;&gt;前言&lt;/h3&gt;
+
 &lt;p&gt;在IOS9之前如果我们想做指纹认证的功能，只能完全信任客户端的结果，如果客户端被破解那么指纹验证就可能被绕过。但是这一切在IOS9之后有了改观，后台服务器也能参与认证的过程了，接下来我们会详细介绍。&lt;/p&gt;
 
-&lt;h1 id=&quot;section-1&quot;&gt;关键点&lt;/h1&gt;
+&lt;h3 id=&quot;section-1&quot;&gt;关键点&lt;/h3&gt;
+
 &lt;ol&gt;
   &lt;li&gt;
-    &lt;p&gt;在IOS9之后苹果对keychain进行了改进，支持秘钥的产生和使用在Secure Enclave中进行。具体可以参考&lt;a href=&quot;https://developer.apple.com/videos/play/wwdc2015/706/&quot;&gt;wwdc2015 Security and Privacy&lt;/a&gt;&lt;/p&gt;
+    &lt;p&gt;在IOS9之后苹果对keychain进行了改进，支持密钥的产生和使用在Secure Enclave中进行。具体可以参考&lt;a href=&quot;https://developer.apple.com/videos/play/wwdc2015/706/&quot;&gt;wwdc2015 Security and Privacy&lt;/a&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;SecGenerateKeyPair&lt;/code&gt; : 可以产生ECC P256的非对称密钥对，如果公钥会返回给程序私钥直接送到Secure Enclave中，任何用户都无法获取私钥，只能通过 SecKeyRawSign 方法来请求签名，同时我们可以使用 SecAccessControlCreateWithFlags 来设置如果要使用私钥必须验证Touch ID。&lt;/p&gt;
+    &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;SecGenerateKeyPair&lt;/code&gt; : 可以产生ECC P256的非对称密钥对，公钥会返回给程序私钥则直接送到Secure Enclave中，任何用户都无法获取私钥，只能通过 SecKeyRawSign 方法来请求签名，同时我们可以使用 SecAccessControlCreateWithFlags 来设置如果要使用私钥必须验证Touch ID。&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;SecKeyRawSign&lt;/code&gt; : 使用ECDSA数字签名算法来签名数据(注意这里是数字签名算法，不只是ECC加密)。&lt;/p&gt;
@@ -30,7 +32,8 @@
   &lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;h1 id=&quot;section-2&quot;&gt;服务器如何参与验证指纹认证&lt;/h1&gt;
+&lt;h3 id=&quot;section-2&quot;&gt;服务器如何参与验证指纹认证&lt;/h3&gt;
+
 &lt;ol&gt;
   &lt;li&gt;
     &lt;p&gt;客户端调用SecGenerateKeyPair产生密钥对。&lt;/p&gt;
@@ -52,7 +55,8 @@
   &lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;h1 id=&quot;openssldemo&quot;&gt;使用openssl验签demo&lt;/h1&gt;
+&lt;h3 id=&quot;seckeyrawsign-openssldemo&quot;&gt;使用 SecKeyRawSign 签名，用openssl验签的demo&lt;/h3&gt;
+
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;#define Secp256r1CurveLen     256
 
 unsigned char Secp256r1header[] =
@@ -69,20 +73,20 @@ unsigned char Secp256r1header[] =
 #define PublicKeyFinalTag         @&quot;\n-----END PUBLIC KEY-----&quot;
 
 
-//产生秘钥
+//产生密钥
 - (void)generateKeyAsync {
 
     CFErrorRef error = NULL;
     SecAccessControlRef sacObject;
     
-    //设置ACL，使用kSecAccessControlTouchIDAny表示使用Touch ID来保护秘钥。
+    //设置ACL，使用kSecAccessControlTouchIDAny表示使用Touch ID来保护密钥。
     sacObject = SecAccessControlCreateWithFlags(kCFAllocatorDefault,
                                                 kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
                                                 kSecAccessControlTouchIDAny | kSecAccessControlPrivateKeyUsage, &amp;amp;error);
     
     NSDictionary *parameters = @{
-                                 (__bridge id)kSecAttrTokenID: (__bridge id)kSecAttrTokenIDSecureEnclave,//表示使用SecureEnclave来保存秘钥
-                                 (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeEC,//表示产生ECC秘钥对，注意目前只支持256位的ECC算法
+                                 (__bridge id)kSecAttrTokenID: (__bridge id)kSecAttrTokenIDSecureEnclave,//表示使用SecureEnclave来保存密钥
+                                 (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeEC,//表示产生ECC密钥对，注意目前只支持256位的ECC算法
                                  (__bridge id)kSecAttrKeySizeInBits: @256,
                                  (__bridge id)kSecPrivateKeyAttrs: @{
                                          (__bridge id)kSecAttrAccessControl: (__bridge_transfer id)sacObject,
@@ -141,7 +145,7 @@ unsigned char Secp256r1header[] =
 }
 
 
-//使用秘钥
+//使用密钥
 - (void)useKeyAsync {
 
     NSDictionary *query = @{
@@ -163,6 +167,8 @@ unsigned char Secp256r1header[] =
             uint8_t hash[CC_SHA1_DIGEST_LENGTH];
             CC_SHA256(dataToSign, CC_SHA1_DIGEST_LENGTH, hash);
             
+            //调用SecKeyRawSign的时候系统会自动调起Touch ID验证用户指纹
+            //指纹的验证和数据的签名都在Secure Enclave中进行保证了安全
             status = SecKeyRawSign(privateKey, kSecPaddingPKCS1, dataToSign, sizeof(dataToSign), sign, &amp;amp;signatureLength);
             if (status == errSecSuccess) {
                 NSLog(@&quot;SecKeyRawSign签名数据成功&quot;);
@@ -188,7 +194,7 @@ unsigned char Secp256r1header[] =
     });
 }
 
-//删除秘钥
+//删除密钥
 - (void)deleteKeyAsync {
 
     NSDictionary *query = @{
@@ -210,16 +216,16 @@ unsigned char Secp256r1header[] =
 &lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
 
-&lt;h2 id=&quot;section-3&quot;&gt;备注&lt;/h2&gt;
+&lt;h3 id=&quot;section-3&quot;&gt;备注&lt;/h3&gt;
+
 &lt;ol&gt;
   &lt;li&gt;
-    &lt;p&gt;我测试发现如果多次调用generateKeyAsync但是kSecAttrLabel又不变，使用SecKeyRawSign是可以签名成功的，但是使用openssl验签就会失败，所以在调用生成秘钥前之前要先删除旧的秘钥。&lt;/p&gt;
+    &lt;p&gt;我测试发现如果多次调用generateKeyAsync且kSecAttrLabel不变，使用SecKeyRawSign可以签名成功，但是使用openssl验签就会失败，所以在调用generateKeyAsync之前先调用deleteKeyAsync。&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;openssl的ios库可以使用&lt;a href=&quot;https://github.com/x2on/OpenSSL-for-iPhone/&quot;&gt;OpenSSL-for-iPhone&lt;/a&gt;，一个命令就可以完成自动下载编译打包，非常方便。&lt;/p&gt;
+    &lt;p&gt;openssl的ios库可以使用&lt;a href=&quot;https://github.com/x2on/OpenSSL-for-iPhone/&quot;&gt;OpenSSL-for-iPhone&lt;/a&gt;，一个命令就可以自动打包，非常方便。&lt;/p&gt;
   &lt;/li&gt;
 &lt;/ol&gt;
-
 </description>
         <pubDate>Tue, 05 Apr 2016 16:08:08 +0800</pubDate>
         <link>http://iDivines.com/develop/ios/2016/04/05/welcome-to-KeychainTouchID.html</link>

@@ -5,21 +5,21 @@ date:   2016-04-05 16:08:08 +0800
 categories: develop ios
 ---
 
-## 前言
+### 前言
 
 在IOS9之前如果我们想做指纹认证的功能，只能完全信任客户端的结果，如果客户端被破解那么指纹验证就可能被绕过。但是这一切在IOS9之后有了改观，后台服务器也能参与认证的过程了，接下来我们会详细介绍。
 
-## 关键点
+### 关键点
 
 1. 在IOS9之后苹果对keychain进行了改进，支持密钥的产生和使用在Secure Enclave中进行。具体可以参考[wwdc2015 Security and Privacy](https://developer.apple.com/videos/play/wwdc2015/706/)
 
-2. `SecGenerateKeyPair` : 可以产生ECC P256的非对称密钥对，如果公钥会返回给程序私钥直接送到Secure Enclave中，任何用户都无法获取私钥，只能通过 SecKeyRawSign 方法来请求签名，同时我们可以使用 SecAccessControlCreateWithFlags 来设置如果要使用私钥必须验证Touch ID。
+2. `SecGenerateKeyPair` : 可以产生ECC P256的非对称密钥对，公钥会返回给程序私钥则直接送到Secure Enclave中，任何用户都无法获取私钥，只能通过 SecKeyRawSign 方法来请求签名，同时我们可以使用 SecAccessControlCreateWithFlags 来设置如果要使用私钥必须验证Touch ID。
 
 3. `SecKeyRawSign` : 使用ECDSA数字签名算法来签名数据(注意这里是数字签名算法，不只是ECC加密)。
 
 4. 如何使用 SecGenerateKeyPair 和 SecKeyRawSign 请参考[TouchIDKeyChainDemo](https://developer.apple.com/library/ios/samplecode/KeychainTouchID/Introduction/Intro.html#//apple_ref/doc/uid/TP40014530-Intro-DontLinkElementID_2)
 
-## 服务器如何参与验证指纹认证
+### 服务器如何参与验证指纹认证
 
 1. 客户端调用SecGenerateKeyPair产生密钥对。
 
@@ -33,7 +33,7 @@ categories: develop ios
 
 6. 服务器使用公钥来验证签名。
 
-## 使用openssl验签demo
+### 使用 SecKeyRawSign 签名，用openssl验签的demo
 
 	#define Secp256r1CurveLen     256
 
@@ -192,7 +192,7 @@ categories: develop ios
 	    });
 	}
 
-## 备注
+### 备注
 
 1. 我测试发现如果多次调用generateKeyAsync且kSecAttrLabel不变，使用SecKeyRawSign可以签名成功，但是使用openssl验签就会失败，所以在调用generateKeyAsync之前先调用deleteKeyAsync。
 
